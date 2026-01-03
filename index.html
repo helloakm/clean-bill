@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clean Bill — Premium Invoicing</title>
+</head>
+<body>
+
+<div id="clean-bill-app" class="cb-wrapper">
+
+  <!-- 1. TOP BAR -->
+  <div class="cb-grid-container cb-top-bar">
+    <div class="cb-brand-zone">
+      <span class="cb-brand">CLEAN BILL</span>
+      <span class="cb-period-tag" id="cb-period-label">Смета 2025</span>
+    </div>
+    <button id="download-xls-btn" class="cb-excel-btn" type="button">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+      <span>Скачать Excel</span>
+    </button>
+  </div>
+
+  <!-- 2. HERO SECTION -->
+  <div class="cb-grid-container">
+    <p class="cb-intro-text" id="cb-summary-text"></p>
+
+    <div class="cb-hero">
+      <span id="cb-hero-hours" class="cb-hero-number">0</span>
+      <span class="cb-hero-label">рабочих часов</span>
+    </div>
+
+    <div class="cb-finance-line" id="invoice-trigger">
+      <span class="cb-fin-item">Выполнено на сумму: <strong id="cb-earned">0 ₽</strong></span>
+      <span class="cb-sep">|</span>
+      <span class="cb-fin-item">Авансы: <strong id="cb-paid">0 ₽</strong></span>
+      <span class="cb-sep">|</span>
+      <span class="cb-fin-item">К оплате: <strong id="cb-balance">0 ₽</strong></span>
+    </div>
+
+    <!-- 3. NAVIGATION & SWITCHER -->
+    <div class="cb-nav-row" id="cb-sticky-nav">
+      <div class="cb-switcher">
+        <button class="cb-sw-btn active" data-filter="all" type="button">Все проекты</button>
+        <button class="cb-sw-btn" data-filter="dev" type="button">Разработка</button>
+        <button class="cb-sw-btn" data-filter="comm" type="button">Правки</button>
+      </div>
+      <div class="cb-arrows-desktop">
+        <button class="cb-arrow" id="slide-prev-btn" type="button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <button class="cb-arrow" id="slide-next-btn" type="button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. PROJECT CARDS CAROUSEL -->
+  <div class="cb-carousel-viewport">
+    <div class="cb-carousel-track" id="cb-cards-grid"></div>
+  </div>
+
+  <!-- 5. CALENDAR SECTION -->
+  <div class="cb-grid-container">
+    <div class="cb-cal-header-wrap" id="calendar-anchor">
+      <button class="cb-cal-btn" id="cal-prev-btn" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <div id="cb-month-label">Декабрь 2025</div>
+      <button class="cb-cal-btn" id="cal-next-btn" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="cb-calendar-container" id="cb-scroll-box">
+    <div class="cb-calendar-grid" id="cb-calendar-grid"></div>
+  </div>
+</div>
+
+<!-- EXTERNAL LIBRARIES -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ical.js/1.5.0/ical.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+/* =========================
+   1) DATA SOURCE (Demo Data)
+   ========================= */
+const icsData = String.raw`BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Clean Bill//Demo//EN
+BEGIN:VEVENT
+SUMMARY:Айдентика бренда, разработка
+DTSTART:20251201T100000Z
+DTEND:20251201T140000Z
+END:VEVENT
+BEGIN:VEVENT
+SUMMARY:Прототип сайта, разработка
+DTSTART:20251203T090000Z
+DTEND:20251203T170000Z
+END:VEVENT
+BEGIN:VEVENT
+SUMMARY:Набор иконок, разработка
+DTSTART:20251204T130000Z
+DTEND:20251204T160000Z
+END:VEVENT
+BEGIN:VEVENT
+SUMMARY:Лендинг, правки
+DTSTART:20251208T110000Z
+DTEND:20251208T133000Z
+END:VEVENT
+BEGIN:VEVENT
+SUMMARY:Презентация продукта, комментарии
+DTSTART:20251210T140000Z
+DTEND:20251210T153000Z
+END:VEVENT
+BEGIN:VEVENT
+SUMMARY:Каталог продукции, корректировки
+DTSTART:20251212T100000Z
+DTEND:20251212T120000Z
+END:VEVENT
+BEGIN:VEVENT
+SUMMARY:Аванс 15000
+DTSTART:20251201T080000Z
+DTEND:20251201T083000Z
+END:VEVENT
+END:VCALENDAR`;
+
+/* =========================
+   2) CONFIGURATION
+   ========================= */
+const tgUsername = 'helloakm';
+const hourlyRate = 5000;
+const currencySymbol = '₽';
+const startHour = 7;
+const endHour = 23;
+
+/* =========================
+   3) APP LOGIC
+   ========================= */
+let globalProjects = {};
+let globalFinance = { earned: 0, paid: 0, balance: 0, totalH: 0, devH: 0, commH: 0 };
+let eventsByDate = new Map();
+
+function esc(s) { return String(s).replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m])); }
+function easeOutQuart(x) { return 1 - Math.pow(1 - x, 4); }
+
+function animate(id, end, dur, suffix = "") {
+  const el = document.getElementById(id); if(!el) return;
+  const startT = performance.now();
+  function step(now) {
+    const progress = Math.min((now - startT) / dur, 1);
+    const val = (easeOutQuart(progress) * end);
+    el.innerText = Math.floor(val).toLocaleString('ru-RU') + suffix;
+    if (progress < 1) requestAnimationFrame(step);
+    else if (id === 'cb-balance' && end > 0 && typeof confetti === 'function') {
+      const r = document.getElementById('cb-hero-hours').getBoundingClientRect();
+      confetti({ particleCount: 140, spread: 70, origin: { x: (r.left + r.width/2)/window.innerWidth, y: (r.top + r.height/2)/window.innerHeight } });
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+function openTg(projName, category, hours, cost, dates) {
+  const typeLabel = category === 'comm' ? 'Правки' : 'Разработка';
+  const message = `Уточни детали по задаче\n${projName} / ${typeLabel} / ${dates} / ${hours} ч / ${cost.toLocaleString('ru-RU')} ${currencySymbol}`;
+  window.open(`https://t.me/${tgUsername}?text=${encodeURIComponent(message)}`, '_blank');
+}
+
+function scrollToDate(dateStr, projectKey) {
+  const target = document.querySelector(`[data-full-date="${dateStr}"]`);
+  if (!target) return;
+  document.getElementById('calendar-anchor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => {
+    const box = document.getElementById('cb-scroll-box');
+    const scrollTarget = target.offsetLeft - (box.clientWidth / 2) + (target.clientWidth / 2);
+    box.scrollTo({ left: scrollTarget, behavior: 'smooth' });
+    const block = target.querySelector(`[data-project-key="${projectKey}"]`);
+    if (block) {
+      block.classList.add('cell-active-highlight');
+      setTimeout(() => block.classList.remove('cell-active-highlight'), 3500);
+    }
+  }, 450);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (typeof ICAL === 'undefined') return;
+  if (!icsData || icsData.length < 50) return;
+
+  try {
+    const jcalData = ICAL.parse(icsData.trim());
+    const comp = new ICAL.Component(jcalData);
+    const vevents = comp.getAllSubcomponents('vevent');
+    let firstD = null, lastD = null;
+
+    vevents.forEach(v => {
+      const ev = new ICAL.Event(v);
+      if (ev.startDate && ev.startDate.isDate) return;
+
+      let title = (ev.summary || "").replace(/\\,/g, ',').trim();
+      const start = ev.startDate.toJSDate();
+      const end = ev.endDate.toJSDate();
+      if (end - start <= 0) return;
+
+      if (title.toLowerCase().match(/оплат|аванс/)) {
+        const amount = parseFloat(title.replace(/[^\d.]/g, ''));
+        if (!isNaN(amount)) globalFinance.paid += amount;
+      } else {
+        const isComm = !!title.toLowerCase().match(/правк|коммент|комент|коррект|финализ|финиш|final|готово/);
+        const cat = isComm ? 'comm' : 'dev';
+        const hrs = Math.ceil(((end - start) / 3600000) * 2) / 2;
+        const name = title.split(',')[0].trim() || title.trim();
+        const key = name.replace(/\s+/g, '_').toLowerCase() + "_" + cat;
+        
+        if (!globalProjects[key]) {
+          globalProjects[key] = { name, category: cat, time: 0, dates: new Map(), id: key };
+        }
+        globalProjects[key].time += hrs;
+        const shortTag = start.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit' });
+        globalProjects[key].dates.set(shortTag, start.toDateString());
+        
+        if (cat === 'dev') globalFinance.devH += hrs; else globalFinance.commH += hrs;
+        const ds = start.toDateString();
+        if (!eventsByDate.has(ds)) eventsByDate.set(ds, []);
+        eventsByDate.get(ds).push({ title: esc(title), start, end, category: cat, projectKey: key });
+
+        if (!firstD || start < firstD) firstD = new Date(start);
+        if (!lastD || start > lastD) lastD = new Date(start);
+      }
+    });
+
+    globalFinance.totalH = globalFinance.devH + globalFinance.commH;
+    globalFinance.earned = globalFinance.totalH * hourlyRate;
+    globalFinance.balance = globalFinance.earned - globalFinance.paid;
+
+    if (lastD) {
+      document.getElementById('cb-period-label').innerText = `Смета за ${lastD.toLocaleString('ru-RU', { month:'long', year:'numeric' })}`;
+      document.getElementById('cb-summary-text').innerText = `С ${firstD.getDate()} ${firstD.toLocaleString('ru-RU',{month:'short'})} по ${lastD.getDate()} ${lastD.toLocaleString('ru-RU',{month:'short'})} затрачено: разработка ${globalFinance.devH} ч., правки — ${globalFinance.commH} ч.`;
+    }
+
+    const renderCards = (filter) => {
+      const track = document.getElementById('cb-cards-grid'); track.innerHTML = '';
+      Object.keys(globalProjects).sort().forEach(k => {
+        const p = globalProjects[k]; if (filter !== 'all' && p.category !== filter) return;
+        const cost = p.time * hourlyRate;
+        const label = p.category === 'comm' ? 'Правки' : 'Разработка';
+        let dTags = ''; const dList = [];
+        p.dates.forEach((fd, l) => { 
+            dTags += `<span class="date-tag" onclick="scrollToDate('${fd}','${p.id}')">${l}</span>`; dList.push(l);
+        });
+
+        track.innerHTML += `
+          <div class="cb-card ${p.category==='comm'?'card-comm':'card-dev'}">
+            <div class="cb-card-title">${esc(p.name)}</div>
+            <div class="cb-card-row">
+                <span class="cb-type-label"><span class="cb-dot"></span>${label}</span>
+                <span>${p.time.toFixed(1)} ч</span>
+            </div>
+            <div class="cb-card-details-reveal">
+                <div class="cb-card-dates">${dTags}</div>
+                <div class="cb-tg-link" onclick="openTg('${esc(p.name)}', '${p.category}', ${p.time.toFixed(1)}, ${cost}, '${dList.join(', ')}')">Уточнить в Телеграм</div>
+            </div>
+            <div class="cb-card-total"><span>Итого</span><span>${cost.toLocaleString('ru-RU')} ${currencySymbol}</span></div>
+          </div>`;
+      });
+    };
+    renderCards('all');
+
+    document.querySelectorAll('.cb-sw-btn').forEach(btn => {
+      btn.onclick = (e) => {
+        document.querySelectorAll('.cb-sw-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active'); renderCards(e.target.dataset.filter);
+      };
+    });
+
+    document.getElementById('slide-next-btn').onclick = () => document.getElementById('cb-cards-grid').scrollBy({left: 410, behavior:'smooth'});
+    document.getElementById('slide-prev-btn').onclick = () => document.getElementById('cb-cards-grid').scrollBy({left: -410, behavior:'smooth'});
+
+    const obs = new IntersectionObserver(e => {
+      if (e[0].isIntersecting) {
+        animate('cb-hero-hours', globalFinance.totalH, 1500);
+        animate('cb-earned', globalFinance.earned, 1200, ` ${currencySymbol}`);
+        animate('cb-paid', globalFinance.paid, 1200, ` ${currencySymbol}`);
+        animate('cb-balance', globalFinance.balance, 1500, ` ${currencySymbol}`);
+        obs.unobserve(e[0].target);
+      }
+    }, { threshold: 0.1 });
+    obs.observe(document.getElementById('invoice-trigger'));
+
+    renderCalendar(firstD, lastD);
+
+    document.getElementById('download-xls-btn').onclick = function() {
+      const data = [["CLEAN BILL — Смета 2025"], ["Тип", "Проект", "Время (ч)", "Сумма"], []];
+      Object.values(globalProjects).forEach(p => {
+        data.push([p.category === 'dev' ? 'Разработка' : 'Правки', p.name, p.time, p.time * hourlyRate]);
+      });
+      data.push([], ["ИТОГО К ОПЛАТЕ", "", "", `${globalFinance.balance.toLocaleString('ru-RU')} ${currencySymbol}`]);
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "Смета");
+      XLSX.writeFile(wb, "Smeta_CleanBill.xlsx");
+    };
+  } catch(e) { console.error(e); }
+
+  function renderCalendar(start, end) {
+    const grid = document.getElementById('cb-calendar-grid'), scrollBox = document.getElementById('cb-scroll-box'), monthLabel = document.getElementById('cb-month-label');
+    let html = '<div class="cb-time-sidebar">'; for (let i=startHour; i<endHour; i++) html += `<div class="cb-time-label">${i}:00</div>`; html += '</div>';
+    let loop = new Date(start); loop.setHours(0,0,0,0); loop.setDate(loop.getDate()-2);
+    let stop = new Date(end); stop.setHours(0,0,0,0); stop.setDate(stop.getDate()+1);
+    while (loop <= stop) {
+        const ds = loop.toDateString();
+        html += `<div class="cb-day-column" data-full-date="${ds}" ${loop.getDate()===1?`data-month-start="${loop.getMonth()}-${loop.getFullYear()}"`:''}>
+            <div class="cb-day-header"><div class="cb-day-name">${loop.toLocaleString('ru-RU',{weekday:'short'})} ${loop.toLocaleString('ru-RU',{month:'short'})}</div><div class="cb-day-num">${loop.getDate()}</div></div>
+            <div class="cb-day-body">`;
+        (eventsByDate.get(ds) || []).forEach(ev => {
+            const top = (ev.start.getHours()-startHour)*60+ev.start.getMinutes();
+            const h = ((ev.end-ev.start)/3600000)*60;
+            const bgO = ev.start.getMinutes() === 0 ? 0 : (60 - ev.start.getMinutes());
+            html += `<div class="cb-event-block ${ev.category==='comm'?'cb-event-comm':'cb-event-dev'}" data-project-key="${ev.projectKey}" style="top:${top}px; height:${h}px; background-position-y:${bgO}px;"><div class="cb-event-info">${ev.title}</div></div>`;
+        });
+        if (ds === stop.toDateString()) html += `<div class="cb-easter-egg-box"><div class="cb-easter-egg">The Show Must Go On</div></div>`;
+        html += `</div></div>`; loop.setDate(loop.getDate()+1);
+    }
+    grid.innerHTML = html;
+    const offsets = [];
+    setTimeout(() => {
+        document.querySelectorAll('#clean-bill-app [data-month-start]').forEach(el => {
+            const [m,y] = el.getAttribute('data-month-start').split('-');
+            offsets.push({ offset: el.offsetLeft - 60, name: new Date(y,m,1).toLocaleString('ru-RU',{month:'long',year:'numeric'})});
+        });
+        scrollBox.scrollLeft = scrollBox.scrollWidth;
+    }, 400);
+    scrollBox.addEventListener('scroll', () => {
+        const sL = scrollBox.scrollLeft + (window.innerWidth/3);
+        let active = offsets[0]; offsets.forEach(m => { if(sL >= m.offset) active = m; });
+        if (active) monthLabel.innerText = active.name;
+    }, { passive: true });
+    document.getElementById('cal-next-btn').onclick = () => scrollBox.scrollBy({ left: 186*7, behavior:'smooth'});
+    document.getElementById('cal-prev-btn').onclick = () => scrollBox.scrollBy({ left: -186*7, behavior:'smooth'});
+  }
+});
+</script>
+
+<style>
+/* =========================
+   CLEAN BILL — GOLD STANDARD UI
+   ========================= */
+:root { 
+    --cb-line: #e3e1f2; --dev-bg: #f0fbf5; --dev-bar: #4caf50; --dev-text: #2e7d32; 
+    --comm-bg: #f4f4ff; --comm-bar: #8878da; --comm-text: #665b9d; 
+    --text-main: #000; --text-secondary: #86868b; --cb-red: #ff3b30;
+}
+#clean-bill-app, #clean-bill-app * { box-sizing: border-box; }
+#clean-bill-app.cb-wrapper { font-family: -apple-system, system-ui, sans-serif; background: #fff; color: #000; padding: 60px 0; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+#clean-bill-app .cb-grid-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; position: relative; }
+
+/* Top Bar */
+#clean-bill-app .cb-top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 80px; }
+#clean-bill-app .cb-brand { font-weight: 700; letter-spacing: 2px; font-size: 14px; }
+#clean-bill-app .cb-period-tag { font-size: 14px; color: var(--text-secondary); margin-left: 15px; border-left: 1px solid var(--cb-line); padding-left: 15px; }
+#clean-bill-app .cb-excel-btn { background: #fff; border: 1px solid var(--cb-line); padding: 12px 28px; border-radius: 40px; cursor: pointer; font-size: 13px; font-weight: 600; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; color: #000; }
+#clean-bill-app .cb-excel-btn:hover { background: #000; color: #fff; border-color: #000; }
+
+/* Hero Section (FIXED BASELINE) */
+#clean-bill-app .cb-hero { display: flex; align-items: baseline; gap: 30px; margin-bottom: 35px; }
+#clean-bill-app .cb-hero-number { font-size: 160px; font-weight: 600; letter-spacing: -8px; line-height: 0.8; margin: 0; }
+#clean-bill-app .cb-hero-label { font-size: 52px; font-weight: 700; line-height: 1; margin: 0; }
+#clean-bill-app .cb-intro-text { font-size: 18px; margin-bottom: 40px; opacity: 0.7; }
+#clean-bill-app .cb-finance-line { font-size: 20px; margin-bottom: 100px; display: flex; align-items: center; }
+#clean-bill-app .cb-sep { margin: 0 20px; color: var(--cb-line); }
+
+/* Switcher & Nav */
+#clean-bill-app .cb-nav-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: #fff; }
+#clean-bill-app .cb-switcher { background: #E8E8ED; padding: 0 5px; border-radius: 24px; display: flex; height: 48px; align-items: center; gap: 2px; }
+#clean-bill-app .cb-sw-btn { border: none; background: transparent; padding: 0 24px; border-radius: 19px; height: 38px; font-size: 14px; font-weight: 600; cursor: pointer; color: #8E8E93; transition: 0.3s; white-space: nowrap; }
+#clean-bill-app .cb-sw-btn.active { background: #1D1D1F; color: #FFFFFF; }
+#clean-bill-app .cb-arrows-desktop { display: flex; }
+#clean-bill-app .cb-arrow { background: #f2f2f7; border: none; border-radius: 50%; width: 44px; height: 44px; cursor: pointer; margin-left: 12px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; }
+#clean-bill-app .cb-arrow:hover { background: #e5e5ea; }
+
+/* Carousel */
+#clean-bill-app .cb-carousel-viewport { width: 100%; overflow: hidden; margin-bottom: 60px; }
+#clean-bill-app .cb-carousel-track { display: flex; gap: 24px; overflow-x: auto; padding-left: calc((100vw - 1200px) / 2 + 20px); padding-right: 40px; padding-bottom: 40px; scroll-snap-type: x mandatory; }
+#clean-bill-app .cb-carousel-track::-webkit-scrollbar { display: none; }
+#clean-bill-app .cb-card { min-width: 380px; scroll-snap-align: start; border-radius: 28px; padding: 40px; display: flex; flex-direction: column; transition: all 0.4s cubic-bezier(0.2, 0, 0, 1); border: 1px solid transparent; position: relative; }
+#clean-bill-app .card-dev { background: var(--dev-bg); }
+#clean-bill-app .card-comm { background: var(--comm-bg); }
+#clean-bill-app .cb-card-title { font-size: 24px; font-weight: 700; margin-bottom: 25px; color: #000; }
+#clean-bill-app .cb-card-row { display: flex; justify-content: space-between; align-items: center; font-size: 15px; color: var(--text-secondary); margin-bottom: 15px; }
+#clean-bill-app .cb-type-label { display: flex; align-items: center; gap: 8px; }
+#clean-bill-app .cb-dot { width: 8px; height: 8px; border-radius: 50%; display: block; }
+#clean-bill-app .card-dev .cb-dot { background: var(--dev-bar); }
+#clean-bill-app .card-comm .cb-dot { background: var(--comm-bar); }
+#clean-bill-app .date-tag { font-size: 11px; padding: 5px 12px; background: rgba(0,0,0,0.04); border-radius: 8px; cursor: pointer; white-space: nowrap; margin-right: 6px; margin-bottom: 6px; }
+#clean-bill-app .cb-tg-link { color: #0288d1; font-weight: 700; cursor: pointer; font-size: 12px; text-decoration: underline; margin-top: 5px; display: block; }
+#clean-bill-app .cb-card-total { border-top: 1px solid rgba(0,0,0,0.05); margin-top: auto; padding-top: 25px; display: flex; justify-content: space-between; font-weight: 700; font-size: 20px; color: #000; }
+
+@media (min-width: 1025px) {
+    #clean-bill-app .cb-carousel-track:hover .cb-card { opacity: 0.4; background: #f5f5f7; border-color: transparent; }
+    #clean-bill-app .cb-card:hover { background: #fff !important; box-shadow: 0 20px 50px rgba(0,0,0,0.05); transform: translateY(-5px); border: 1px solid var(--cb-line); }
+    #clean-bill-app .cb-card-details-reveal { opacity: 0; max-height: 0; transition: all 0.3s; overflow: hidden; }
+    #clean-bill-app .cb-card:hover .cb-card-details-reveal { opacity: 1; max-height: 300px; margin-bottom: 20px; }
+}
+
+/* Calendar Grid */
+#clean-bill-app .cb-cal-header-wrap { display: flex; justify-content: flex-start; align-items: center; padding-bottom: 30px; }
+#clean-bill-app #cb-month-label { font-size: 20px; font-weight: 700; text-transform: capitalize; color: #000; margin: 0 20px; }
+#clean-bill-app .cb-cal-btn { background: none; border: none; cursor: pointer; color: #ccc; padding: 8px; display: flex; align-items: center; transition: 0.2s; }
+#clean-bill-app .cb-cal-btn:hover { color: #000; }
+#clean-bill-app .cb-calendar-container { width: 100%; overflow-x: auto; border-top: 1px solid var(--cb-line); scroll-behavior: smooth; }
+#clean-bill-app .cb-calendar-grid { display: flex; min-width: max-content; }
+#clean-bill-app .cb-time-sidebar { width: 60px; border-right: 1px solid var(--cb-line); position: sticky; left: 0; background: #fff; z-index: 10; }
+#clean-bill-app .cb-time-label { height: 60px; font-size: 10px; color: #aaa; text-align: right; padding: 52px 12px 0 0; }
+#clean-bill-app .cb-day-column { width: 185px; border-right: 1px solid var(--cb-line); position: relative; }
+#clean-bill-app .cb-day-header { height: 85px; display: flex; flex-direction: column; justify-content: center; align-items: center; border-bottom: 1px solid var(--cb-line); position: sticky; top: 0; background: #fff; z-index: 5; }
+#clean-bill-app .cb-day-num { font-size: 20px; font-weight: 500; }
+#clean-bill-app .cb-day-body { height: 960px; background-image: linear-gradient(var(--cb-line) 1px, transparent 1px); background-size: 100% 60px; position: relative; }
+
+/* GLASS STYLE CELLS */
+#clean-bill-app .cb-event-block { 
+    position: absolute; left: 0; right: 0; padding: 12px; overflow: hidden; 
+    border-top: none; border-bottom: none; border-left: 4px solid; 
+    background-image: linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px); 
+    background-size: 100% 60px; transition: all 0.3s; 
+}
+#clean-bill-app .cb-event-dev { background-color: var(--dev-bg) !important; border-left-color: var(--dev-bar) !important; color: var(--dev-text); }
+#clean-bill-app .cb-event-comm { background-color: var(--comm-bg) !important; border-left-color: var(--comm-bar) !important; color: var(--comm-text); }
+
+/* FOCUS STYLE */
+#clean-bill-app .cell-active-highlight { 
+    background-color: #FFFFFF !important; background-image: none !important;
+    border-top: 4px solid var(--cb-red) !important; border-left: none !important; 
+    z-index: 100 !important; transform: scale(1.05); box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
+}
+
+#clean-bill-app .cb-easter-egg-box { position: absolute; top: 420px; width: 100%; height: 60px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+#clean-bill-app .cb-easter-egg { font-size: 11px; color: #86868b; font-style: italic; }
+
+/* MOBILE */
+@media (max-width: 1024px) {
+    #clean-bill-app.cb-wrapper { padding: 30px 0; }
+    #clean-bill-app .cb-hero { flex-direction: column; gap: 5px; margin-bottom: 25px; align-items: flex-start; }
+    #clean-bill-app .cb-hero-number { font-size: 100px; letter-spacing: -4px; line-height: 1; }
+    #clean-bill-app .cb-hero-label { font-size: 28px; }
+    #clean-bill-app .cb-finance-line { flex-direction: column; gap: 12px; margin-bottom: 40px; align-items: flex-start; }
+    #clean-bill-app .cb-sep { display: none; }
+    #clean-bill-app .cb-nav-row { position: sticky; top: 0; padding: 15px 20px; z-index: 2000; border-bottom: 1px solid var(--cb-line); margin-left: -20px; width: calc(100% + 40px); }
+    #clean-bill-app .cb-switcher { width: 100%; }
+    #clean-bill-app .cb-sw-btn { flex-grow: 1; padding: 0 10px; }
+    #clean-bill-app .cb-arrows-desktop { display: none; }
+    #clean-bill-app .cb-carousel-track { flex-direction: column; padding: 20px; gap: 15px; }
+    #clean-bill-app .cb-card { min-width: 100%; padding: 25px; background: #fff !important; border: 1px solid var(--cb-line) !important; opacity: 1 !important; }
+    #clean-bill-app .cb-card-details-reveal { opacity: 1 !important; max-height: 500px !important; margin-bottom: 15px !important; }
+    #clean-bill-app .cb-day-column { width: 140px; }
+}
+</style>
