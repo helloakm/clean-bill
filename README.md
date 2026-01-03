@@ -1,2 +1,5 @@
-# clean-bill
-Interactive premium billing portal for designers. Converts iCloud/Google Calendar events into elegant, Apple-style client invoices with project analytics.
+# Clean Bill
+Concept and Design by Andrey Klimenko (helloakm)
+
+Clean Bill is a high-end billing tool for creative professionals.
+It bridges the gap between creative chaos and professional invoicing.
